@@ -729,12 +729,20 @@ for i, opt in ipairs(TYPE_OPTIONS) do
 end
 
 local DropdownOverlay = Instance.new("CanvasGroup")
-DropdownOverlay.Size = UDim2.new(1, 0, 1, 0)
+DropdownOverlay.Size = Window.Size
+DropdownOverlay.Position = Window.Position
 DropdownOverlay.BackgroundTransparency = 1
 DropdownOverlay.BorderSizePixel = 0
 DropdownOverlay.ZIndex = 100
 DropdownOverlay.Interactable = false
 DropdownOverlay.Parent = ScreenGui
+
+Window:GetPropertyChangedSignal("Position"):Connect(function()
+    DropdownOverlay.Position = Window.Position
+end)
+Window:GetPropertyChangedSignal("Size"):Connect(function()
+    DropdownOverlay.Size = Window.Size
+end)
 
 local function makeDropdown(parent, placeholder, lOrder)
     local container = Instance.new("Frame")
@@ -804,16 +812,19 @@ local function makeDropdown(parent, placeholder, lOrder)
     local onSelect = nil
 
     local function getPosition()
-        local boxAbs = box.AbsolutePosition
-        local boxSz  = box.AbsoluteSize
-        local scrSz  = ScreenGui.AbsoluteSize
-        local w      = boxSz.X
-        local h      = panel.AbsoluteSize.Y > 0 and panel.AbsoluteSize.Y or math.min(#ddList:GetChildren() * 27 + 8, 200)
-        local spaceBelow = scrSz.Y - (boxAbs.Y + boxSz.Y + 4)
+        local boxAbs     = box.AbsolutePosition
+        local boxSz      = box.AbsoluteSize
+        local overlayAbs = DropdownOverlay.AbsolutePosition
+        local overlaySz  = DropdownOverlay.AbsoluteSize
+        local w          = boxSz.X
+        local h          = panel.AbsoluteSize.Y > 0 and panel.AbsoluteSize.Y or math.min(#ddList:GetChildren() * 27 + 8, 200)
+        local relX       = boxAbs.X - overlayAbs.X
+        local relY       = boxAbs.Y - overlayAbs.Y
+        local spaceBelow = overlaySz.Y - (relY + boxSz.Y + 4)
         local posY = spaceBelow >= h
-            and (boxAbs.Y + boxSz.Y + 4)
-            or  (boxAbs.Y - h - 4)
-        return boxAbs.X, posY, w
+            and (relY + boxSz.Y + 4)
+            or  (relY - h - 4)
+        return relX, posY, w
     end
 
     local function closeDropdown()
@@ -839,16 +850,8 @@ local function makeDropdown(parent, placeholder, lOrder)
     Content.ChildAdded:Connect(function() end)
     Content:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
         if not open then return end
-        local boxAbs = box.AbsolutePosition
-        local boxSz  = box.AbsoluteSize
-        local winAbs = Window.AbsolutePosition
-        local winSz  = Window.AbsoluteSize
-        local inBounds = boxAbs.Y >= winAbs.Y and (boxAbs.Y + boxSz.Y) <= (winAbs.Y + winSz.Y)
-        panel.Visible = inBounds
-        if inBounds then
-            local x, posY, _ = getPosition()
-            panel.Position = UDim2.new(0, x, 0, posY)
-        end
+        local x, posY, _ = getPosition()
+        panel.Position = UDim2.new(0, x, 0, posY)
     end)
 
     box.MouseButton1Click:Connect(function()
