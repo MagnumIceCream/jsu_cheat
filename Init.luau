@@ -1094,7 +1094,7 @@ end)
 task.spawn(function()
     local attrs = getAllAttributes()
     if #attrs == 0 then
-        attrs = {"Legendary", "Daemon", "Vampire", "Undead", "Cursed", "Holy", "Fearless", "Godly", "Invincible"}
+        attrs = {"Legendary", "Daemon", "Godly", "Invincible"}
     end
     attrDD.populate(attrs)
 
