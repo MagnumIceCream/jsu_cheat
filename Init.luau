@@ -110,115 +110,6 @@ local function shouldStop()
 end
 
 local spinThread = nil
-local notifFrame = nil
-
-local function showNotification(message)
-    if notifFrame then notifFrame:Destroy() end
-
-    local notif = Instance.new("Frame")
-    notif.Size = UDim2.new(0, 260, 0, 48)
-    notif.Position = UDim2.new(0.5, -130, 0, -60)
-    notif.BackgroundColor3 = T.elevated
-    notif.BorderSizePixel = 0
-    notif.ZIndex = 200
-    corner(notif, 10)
-    stroke(notif, T.success)
-    notif.Parent = ScreenGui
-
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 7, 0, 7)
-    dot.Position = UDim2.new(0, 14, 0.5, -3.5)
-    dot.BackgroundColor3 = T.success
-    dot.BorderSizePixel = 0
-    corner(dot, 4)
-    dot.Parent = notif
-
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -34, 1, 0)
-    lbl.Position = UDim2.new(0, 28, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = message
-    lbl.TextColor3 = T.text
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.TextSize = 12
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextWrapped = true
-    lbl.ZIndex = 200
-    lbl.Parent = notif
-
-    notifFrame = notif
-
-    tween(notif, {Position = UDim2.new(0.5, -130, 0, 12)}, 0.25)
-    task.delay(4, function()
-        if notif and notif.Parent then
-            tween(notif, {Position = UDim2.new(0.5, -130, 0, -60)}, 0.25)
-            task.delay(0.25, function()
-                if notif and notif.Parent then notif:Destroy() end
-            end)
-        end
-    end)
-end
-
-local function stopSpin(reason, notify)
-    State.running = false
-    State.status = reason or "Stopped"
-    if spinThread then
-        task.cancel(spinThread)
-        spinThread = nil
-    end
-    if notify then
-        showNotification(reason)
-    end
-end
-
-local function startSpin(updateUI)
-    if State.running then return end
-    local arrowCount = getItemCount(State.arrowType)
-    if arrowCount <= 0 then
-        State.status = "No arrows found"
-        updateUI()
-        return
-    end
-    State.running = true
-    State.spinCount = 0
-    State.status = "Running"
-    updateUI()
-    spinThread = task.spawn(function()
-        while State.running do
-            local stop, reason = shouldStop()
-            if stop then
-                stopSpin(reason, true)
-                updateUI()
-                break
-            end
-            local arrows = getItemCount(State.arrowType)
-            if arrows <= 0 then
-                stopSpin("Out of arrows", false)
-                updateUI()
-                break
-            end
-            fireItem(State.arrowType)
-            State.spinCount = State.spinCount + 1
-            State.status = "Running — " .. State.spinCount .. " spins"
-            updateUI()
-            task.wait(State.interval)
-            stop, reason = shouldStop()
-            if stop then
-                stopSpin(reason, true)
-                updateUI()
-                break
-            end
-            local rokas = getItemCount("Rokakaka")
-            if rokas <= 0 then
-                stopSpin("Out of Rokakakas", false)
-                updateUI()
-                break
-            end
-            fireItem("Rokakaka")
-            task.wait(State.interval)
-        end
-    end)
-end
 
 local old = PlayerGui:FindFirstChild("AutoSpinGUI")
 if old then old:Destroy() end
@@ -767,10 +658,9 @@ local PRESETS = {
         { type = "attribute", attribute = "Legendary" },
         { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Godly" },
         { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Daemon" },
-        { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Invincible" },
         { type = "combo", stand = "Dio's The World", attribute = "Daemon" },
         { type = "combo", stand = "Dio's The World", attribute = "Godly" },
-        { type = "combo", stand = "Dio's The World", attribute = "Invincible" },
+        { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Invincible" },
         { type = "combo", stand = "Star Platinum OVA", attribute = "Invincible" },
         { type = "combo", stand = "Star Platinum OVA", attribute = "Daemon" },
         { type = "combo", stand = "Star Platinum OVA", attribute = "Godly" },
@@ -1160,7 +1050,7 @@ end)
 task.spawn(function()
     local attrs = getAllAttributes()
     if #attrs == 0 then
-        attrs = {"Legendary", "Daemon", "Godly", "Invincible"}
+        attrs = {"Legendary", "Daemon", "Vampire", "Undead", "Cursed", "Holy", "Fearless", "Godly", "Invincible"}
     end
     attrDD.populate(attrs)
 
@@ -1253,16 +1143,83 @@ local function updateUI()
     end
 end
 
+local function showNotification(message)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title   = "Auto Spin",
+            Text    = message,
+            Duration = 5,
+        })
+    end)
+end
+
+local function stopSpin(reason, notify)
+    State.running = false
+    State.status = reason or "Stopped"
+    if spinThread then
+        task.cancel(spinThread)
+        spinThread = nil
+    end
+    updateUI()
+    if notify then
+        showNotification(reason)
+    end
+end
+
+local function startSpin()
+    if State.running then return end
+    local arrowCount = getItemCount(State.arrowType)
+    if arrowCount <= 0 then
+        State.status = "No arrows found"
+        updateUI()
+        return
+    end
+    State.running = true
+    State.spinCount = 0
+    State.status = "Running"
+    updateUI()
+    spinThread = task.spawn(function()
+        while State.running do
+            local stop, reason = shouldStop()
+            if stop then
+                stopSpin(reason, true)
+                break
+            end
+            local arrows = getItemCount(State.arrowType)
+            if arrows <= 0 then
+                stopSpin("Out of arrows", false)
+                break
+            end
+            fireItem(State.arrowType)
+            State.spinCount = State.spinCount + 1
+            State.status = "Running — " .. State.spinCount .. " spins"
+            updateUI()
+            task.wait(State.interval)
+            stop, reason = shouldStop()
+            if stop then
+                stopSpin(reason, true)
+                break
+            end
+            local rokas = getItemCount("Rokakaka")
+            if rokas <= 0 then
+                stopSpin("Out of Rokakakas", false)
+                break
+            end
+            fireItem("Rokakaka")
+            task.wait(State.interval)
+        end
+    end)
+end
+
 startBtn.MouseButton1Click:Connect(function()
     if not State.running then
-        startSpin(updateUI)
+        startSpin()
     end
 end)
 
 stopBtn.MouseButton1Click:Connect(function()
     if State.running then
         stopSpin("Stopped by user", false)
-        updateUI()
     end
 end)
 
