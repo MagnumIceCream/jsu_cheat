@@ -712,20 +712,7 @@ sliderTrack.InputChanged:Connect(function(i)
 end)
 
 local PRESETS = {
-    { name = "Legendary (any)",         rules = {{ type = "attribute", attribute = "Legendary" }} },
-    { name = "Jotaro SP Godly",         rules = {{ type = "combo", stand = "Jotaro's Star Platinum", attribute = "Godly" }} },
-    { name = "Jotaro SP Daemon",        rules = {{ type = "combo", stand = "Jotaro's Star Platinum", attribute = "Daemon" }} },
-    { name = "Dio's TW Daemon",         rules = {{ type = "combo", stand = "Dio's The World", attribute = "Daemon" }} },
-    { name = "Dio's TW Godly",          rules = {{ type = "combo", stand = "Dio's The World", attribute = "Godly" }} },
-    { name = "Jotaro SP Invincible",    rules = {{ type = "combo", stand = "Jotaro's Star Platinum", attribute = "Invincible" }} },
-    { name = "SP OVA Invincible",       rules = {{ type = "combo", stand = "Star Platinum OVA", attribute = "Invincible" }} },
-    { name = "SP OVA Daemon",           rules = {{ type = "combo", stand = "Star Platinum OVA", attribute = "Daemon" }} },
-    { name = "SP OVA Godly",            rules = {{ type = "combo", stand = "Star Platinum OVA", attribute = "Godly" }} },
-    { name = "Putrid Whine Daemon",     rules = {{ type = "combo", stand = "Putrid Whine", attribute = "Daemon" }} },
-    { name = "Putrid Whine Invincible", rules = {{ type = "combo", stand = "Putrid Whine", attribute = "Invincible" }} },
-    { name = "TW OVA Daemon",           rules = {{ type = "combo", stand = "The World OVA", attribute = "Daemon" }} },
-    { name = "TW OVA Invincible",       rules = {{ type = "combo", stand = "The World OVA", attribute = "Invincible" }} },
-    { name = "All Targets", rules = {
+    { name = "Recommended", rules = {
         { type = "attribute", attribute = "Legendary" },
         { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Godly" },
         { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Daemon" },
