@@ -1,3 +1,3 @@
-local Url = "https://raw.githubusercontent.com/MagnumIceCream/jsu_cheat/refs/heads/main/Init.luau"
+local Url = "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/AutoSpin.lua?t=" .. tostring(os.time())
 
 loadstring(game:HttpGet(Url))()
