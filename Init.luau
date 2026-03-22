@@ -114,7 +114,11 @@ local lastStand = ""
 
 local function onStandChanged()
     local stand = getCurrentStand()
-    if stand ~= "Unknown" and stand ~= "" and stand ~= lastStand then
+    if stand == "Unknown" or stand == "" then
+        lastStand = stand
+        return
+    end
+    if stand ~= lastStand then
         lastStand = stand
         if State.running then
             State.spinCount = State.spinCount + 1
