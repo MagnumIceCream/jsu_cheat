@@ -1,5 +1,5 @@
 pcall(function()
-  loadstring(game:HttpGet("https://raw.githubusercontent.com/evxncodes/mainroblox/main/anti-afk/raw"))()
+  loadstring(game:HttpGet("https://raw.githubusercontent.com/evxncodes/mainroblox/refs/heads/main/anti-afk"))()
 end)
 
 local Players = game:GetService("Players")
