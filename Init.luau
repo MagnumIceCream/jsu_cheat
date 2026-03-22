@@ -110,6 +110,17 @@ local function shouldStop()
 end
 
 local spinThread = nil
+local lastStand = ""
+
+local function onStandChanged()
+    local stand = getCurrentStand()
+    if stand ~= "Unknown" and stand ~= "" and stand ~= lastStand then
+        lastStand = stand
+        if State.running then
+            State.spinCount = State.spinCount + 1
+        end
+    end
+end
 
 local old = PlayerGui:FindFirstChild("AutoSpinGUI")
 if old then old:Destroy() end
@@ -1191,7 +1202,6 @@ local function startSpin()
                 break
             end
             fireItem(State.arrowType)
-            State.spinCount = State.spinCount + 1
             State.status = "Running — " .. State.spinCount .. " spins"
             updateUI()
             task.wait(State.interval)
@@ -1274,6 +1284,7 @@ end)
 
 RunService.Heartbeat:Connect(function()
     if not ScreenGui.Parent then return end
+    onStandChanged()
     arrowCountLabel.Text = tostring(getItemCount(State.arrowType))
     rokaCountLabel.Text  = tostring(getItemCount("Rokakaka"))
     standVal.Text = getCurrentStand()
