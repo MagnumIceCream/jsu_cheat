@@ -725,6 +725,21 @@ local PRESETS = {
     { name = "Putrid Whine Invincible", rules = {{ type = "combo", stand = "Putrid Whine", attribute = "Invincible" }} },
     { name = "TW OVA Daemon",           rules = {{ type = "combo", stand = "The World OVA", attribute = "Daemon" }} },
     { name = "TW OVA Invincible",       rules = {{ type = "combo", stand = "The World OVA", attribute = "Invincible" }} },
+    { name = "All Targets", rules = {
+        { type = "attribute", attribute = "Legendary" },
+        { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Godly" },
+        { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Daemon" },
+        { type = "combo", stand = "Dio's The World", attribute = "Daemon" },
+        { type = "combo", stand = "Dio's The World", attribute = "Godly" },
+        { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Invincible" },
+        { type = "combo", stand = "Star Platinum OVA", attribute = "Invincible" },
+        { type = "combo", stand = "Star Platinum OVA", attribute = "Daemon" },
+        { type = "combo", stand = "Star Platinum OVA", attribute = "Godly" },
+        { type = "combo", stand = "Putrid Whine", attribute = "Daemon" },
+        { type = "combo", stand = "Putrid Whine", attribute = "Invincible" },
+        { type = "combo", stand = "The World OVA", attribute = "Daemon" },
+        { type = "combo", stand = "The World OVA", attribute = "Invincible" },
+    }},
 }
 
 local excBody = makeSection("Exclusions", 3)
@@ -848,6 +863,19 @@ local function makeDropdown(parent, placeholder, lOrder)
     local open = false
     local onSelect = nil
 
+    local function getPosition()
+        local boxAbs = box.AbsolutePosition
+        local boxSz  = box.AbsoluteSize
+        local scrSz  = ScreenGui.AbsoluteSize
+        local w      = boxSz.X
+        local h      = panel.AbsoluteSize.Y > 0 and panel.AbsoluteSize.Y or math.min(#ddList:GetChildren() * 27 + 8, 200)
+        local spaceBelow = scrSz.Y - (boxAbs.Y + boxSz.Y + 4)
+        local posY = spaceBelow >= h
+            and (boxAbs.Y + boxSz.Y + 4)
+            or  (boxAbs.Y - h - 4)
+        return boxAbs.X, posY, w
+    end
+
     local function closeDropdown()
         open = false
         tween(panel, {Size = UDim2.new(0, panel.AbsoluteSize.X, 0, 0)}, 0.12)
@@ -860,21 +888,20 @@ local function makeDropdown(parent, placeholder, lOrder)
     local function openDropdown()
         open = true
         DropdownOverlay.Interactable = true
-        local boxAbs = box.AbsolutePosition
-        local boxSz  = box.AbsoluteSize
-        local scrSz  = ScreenGui.AbsoluteSize
-        local w      = boxSz.X
-        local count  = #ddList:GetChildren()
-        local h      = math.min(math.max(count, 1) * 27 + 8, 200)
-        local spaceBelow = scrSz.Y - (boxAbs.Y + boxSz.Y + 4)
-        local posY = spaceBelow >= h
-            and (boxAbs.Y + boxSz.Y + 4)
-            or  (boxAbs.Y - h - 4)
-        panel.Position = UDim2.new(0, boxAbs.X, 0, posY)
+        local x, posY, w = getPosition()
+        local h = math.min(math.max(#ddList:GetChildren(), 1) * 27 + 8, 200)
+        panel.Position = UDim2.new(0, x, 0, posY)
         panel.Size = UDim2.new(0, w, 0, 0)
         panel.Visible = true
         tween(panel, {Size = UDim2.new(0, w, 0, h)}, 0.12)
     end
+
+    Content.ChildAdded:Connect(function() end)
+    Content:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+        if not open then return end
+        local x, posY, w = getPosition()
+        panel.Position = UDim2.new(0, x, 0, posY)
+    end)
 
     box.MouseButton1Click:Connect(function()
         if open then closeDropdown() else openDropdown() end
@@ -1094,7 +1121,7 @@ end)
 task.spawn(function()
     local attrs = getAllAttributes()
     if #attrs == 0 then
-        attrs = {"Legendary", "Daemon", "Godly", "Invincible"}
+        attrs = {"Legendary", "Daemon", "Vampire", "Undead", "Cursed", "Holy", "Fearless", "Godly", "Invincible"}
     end
     attrDD.populate(attrs)
 
