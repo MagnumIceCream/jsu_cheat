@@ -1157,7 +1157,7 @@ local function stopSpin(reason, notify)
     State.running = false
     State.status = reason or "Stopped"
     if spinThread then
-        task.cancel(spinThread)
+        pcall(task.cancel, spinThread)
         spinThread = nil
     end
     updateUI()
