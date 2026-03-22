@@ -806,18 +806,13 @@ local function makeDropdown(parent, placeholder, lOrder)
     local function getPosition()
         local boxAbs = box.AbsolutePosition
         local boxSz  = box.AbsoluteSize
-        local winAbs = Window.AbsolutePosition
-        local winSz  = Window.AbsoluteSize
+        local scrSz  = ScreenGui.AbsoluteSize
         local w      = boxSz.X
         local h      = panel.AbsoluteSize.Y > 0 and panel.AbsoluteSize.Y or math.min(#ddList:GetChildren() * 27 + 8, 200)
-        local spaceBelow = winAbs.Y + winSz.Y - (boxAbs.Y + boxSz.Y + 4)
-        local posY
-        if spaceBelow >= h then
-            posY = boxAbs.Y + boxSz.Y + 4
-        else
-            posY = boxAbs.Y - h - 4
-        end
-        posY = math.clamp(posY, winAbs.Y, winAbs.Y + winSz.Y - h)
+        local spaceBelow = scrSz.Y - (boxAbs.Y + boxSz.Y + 4)
+        local posY = spaceBelow >= h
+            and (boxAbs.Y + boxSz.Y + 4)
+            or  (boxAbs.Y - h - 4)
         return boxAbs.X, posY, w
     end
 
@@ -845,14 +840,15 @@ local function makeDropdown(parent, placeholder, lOrder)
     Content:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
         if not open then return end
         local boxAbs = box.AbsolutePosition
+        local boxSz  = box.AbsoluteSize
         local winAbs = Window.AbsolutePosition
         local winSz  = Window.AbsoluteSize
-        if boxAbs.Y < winAbs.Y or boxAbs.Y > winAbs.Y + winSz.Y then
-            closeDropdown()
-            return
+        local inBounds = boxAbs.Y >= winAbs.Y and (boxAbs.Y + boxSz.Y) <= (winAbs.Y + winSz.Y)
+        panel.Visible = inBounds
+        if inBounds then
+            local x, posY, _ = getPosition()
+            panel.Position = UDim2.new(0, x, 0, posY)
         end
-        local x, posY, w = getPosition()
-        panel.Position = UDim2.new(0, x, 0, posY)
     end)
 
     box.MouseButton1Click:Connect(function()
