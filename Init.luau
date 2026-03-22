@@ -1,5 +1,5 @@
-task.spawn(function()
-  loadstring(game:HttpGet("https://raw.githubusercontent.com/evxncodes/mainroblox/main/anti-afk", true))()
+pcall(function()
+  loadstring(game:HttpGet("https://raw.githubusercontent.com/evxncodes/mainroblox/main/anti-afk"))()
 end
 
 local Players = game:GetService("Players")
