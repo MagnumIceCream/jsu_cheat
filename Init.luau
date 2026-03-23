@@ -682,9 +682,10 @@ local PRESETS = {
         { type = "attribute", attribute = "Legendary" },
         { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Godly" },
         { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Daemon" },
+        { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Invincible" },
         { type = "combo", stand = "Dio's The World", attribute = "Daemon" },
         { type = "combo", stand = "Dio's The World", attribute = "Godly" },
-        { type = "combo", stand = "Jotaro's Star Platinum", attribute = "Invincible" },
+        { type = "combo", stand = "Dio's The World", attribute = "Invincible" },
         { type = "combo", stand = "Star Platinum OVA", attribute = "Invincible" },
         { type = "combo", stand = "Star Platinum OVA", attribute = "Daemon" },
         { type = "combo", stand = "Star Platinum OVA", attribute = "Godly" },
@@ -692,6 +693,9 @@ local PRESETS = {
         { type = "combo", stand = "Putrid Whine", attribute = "Invincible" },
         { type = "combo", stand = "The World OVA", attribute = "Daemon" },
         { type = "combo", stand = "The World OVA", attribute = "Invincible" },
+        { type = "combo", stand = "D4C", attribute = "Invincible" },
+        { type = "combo", stand = "White Snake", attribute = "Invincible" },
+        { type = "combo", stand = "Kars", attribute = "Invincible" },
     }},
 }
 
