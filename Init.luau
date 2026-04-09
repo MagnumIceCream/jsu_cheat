@@ -6,9 +6,7 @@ local VirtualUser = game:GetService("VirtualUser")
 
 Players.LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-
     task.wait(1)
-
     VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 end)
 
@@ -16,6 +14,8 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Library"):WaitForChild("Remotes")
 local Send = Remotes.Send
+
+local PRESET_FILE = "AutoSpin_Presets.json"
 
 local State = {
     running    = false,
@@ -527,13 +527,16 @@ attrVal.TextSize = 13
 attrVal.TextXAlignment = Enum.TextXAlignment.Right
 attrVal.Parent = attrRow
 
+-- ============================================================
+-- CONFIGURATION SECTION
+-- ============================================================
 local configBody = makeSection("Configuration", 2)
 
 local arrowRow = makeRow(configBody, 0)
 arrowRow.Size = UDim2.new(1, 0, 0, 44)
 
 local arrowLbl = Instance.new("TextLabel")
-arrowLbl.Size = UDim2.new(0.5, 0, 1, 0)
+arrowLbl.Size = UDim2.new(0.35, 0, 1, 0)
 arrowLbl.BackgroundTransparency = 1
 arrowLbl.Text = "Arrow Type"
 arrowLbl.TextColor3 = T.text
@@ -542,9 +545,16 @@ arrowLbl.TextSize = 13
 arrowLbl.TextXAlignment = Enum.TextXAlignment.Left
 arrowLbl.Parent = arrowRow
 
+-- 3-option toggle: Stand | Unusual | Kars Mask
+local ARROW_OPTIONS = {
+    { label = "Stand",   item = "Stand Arrow" },
+    { label = "Unusual", item = "Unusual Arrow" },
+    { label = "Kars",    item = "Kars Mask" },
+}
+
 local toggleBg = Instance.new("Frame")
-toggleBg.Size = UDim2.new(0, 178, 0, 28)
-toggleBg.Position = UDim2.new(1, -178, 0.5, -14)
+toggleBg.Size = UDim2.new(0, 195, 0, 28)
+toggleBg.Position = UDim2.new(1, -195, 0.5, -14)
 toggleBg.BackgroundColor3 = T.elevated
 toggleBg.BorderSizePixel = 0
 corner(toggleBg, 7)
@@ -552,56 +562,50 @@ stroke(toggleBg, T.border)
 toggleBg.Parent = arrowRow
 
 local toggleSlider = Instance.new("Frame")
-toggleSlider.Size = UDim2.new(0.5, -2, 1, -4)
+toggleSlider.Size = UDim2.new(1/#ARROW_OPTIONS, -2, 1, -4)
 toggleSlider.Position = UDim2.new(0, 2, 0, 2)
 toggleSlider.BackgroundColor3 = T.accent
 toggleSlider.BorderSizePixel = 0
 corner(toggleSlider, 5)
 toggleSlider.Parent = toggleBg
 
-local opt1 = Instance.new("TextButton")
-opt1.Size = UDim2.new(0.5, 0, 1, 0)
-opt1.Position = UDim2.new(0, 0, 0, 0)
-opt1.BackgroundTransparency = 1
-opt1.Text = "Stand"
-opt1.TextColor3 = T.text
-opt1.Font = Enum.Font.GothamBold
-opt1.TextSize = 11
-opt1.ZIndex = 2
-opt1.Parent = toggleBg
-
-local opt2 = Instance.new("TextButton")
-opt2.Size = UDim2.new(0.5, 0, 1, 0)
-opt2.Position = UDim2.new(0.5, 0, 0, 0)
-opt2.BackgroundTransparency = 1
-opt2.Text = "Unusual"
-opt2.TextColor3 = T.textMuted
-opt2.Font = Enum.Font.GothamMedium
-opt2.TextSize = 11
-opt2.ZIndex = 2
-opt2.Parent = toggleBg
-
+local arrowOptBtns = {}
 local arrowSelected = "Stand Arrow"
-opt1.MouseButton1Click:Connect(function()
-    if arrowSelected == "Stand Arrow" then return end
-    arrowSelected = "Stand Arrow"
-    State.arrowType = "Stand Arrow"
-    tween(toggleSlider, {Position = UDim2.new(0, 2, 0, 2)})
-    tween(opt1, {TextColor3 = T.text})
-    tween(opt2, {TextColor3 = T.textMuted})
-    opt1.Font = Enum.Font.GothamBold
-    opt2.Font = Enum.Font.GothamMedium
-end)
-opt2.MouseButton1Click:Connect(function()
-    if arrowSelected == "Unusual Arrow" then return end
-    arrowSelected = "Unusual Arrow"
-    State.arrowType = "Unusual Arrow"
-    tween(toggleSlider, {Position = UDim2.new(0.5, -2, 0, 2)})
-    tween(opt1, {TextColor3 = T.textMuted})
-    tween(opt2, {TextColor3 = T.text})
-    opt2.Font = Enum.Font.GothamBold
-    opt1.Font = Enum.Font.GothamMedium
-end)
+
+for i, opt in ipairs(ARROW_OPTIONS) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1/#ARROW_OPTIONS, 0, 1, 0)
+    btn.Position = UDim2.new((i-1)/#ARROW_OPTIONS, 0, 0, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = opt.label
+    btn.TextColor3 = i == 1 and T.text or T.textMuted
+    btn.Font = i == 1 and Enum.Font.GothamBold or Enum.Font.GothamMedium
+    btn.TextSize = 11
+    btn.ZIndex = 2
+    btn.BorderSizePixel = 0
+    btn.Parent = toggleBg
+    arrowOptBtns[i] = btn
+end
+
+local function selectArrow(idx)
+    local opt = ARROW_OPTIONS[idx]
+    if arrowSelected == opt.item then return end
+    arrowSelected = opt.item
+    State.arrowType = opt.item
+    local slotW = 1/#ARROW_OPTIONS
+    tween(toggleSlider, {Position = UDim2.new(slotW * (idx-1), idx == 1 and 2 or 0, 0, 2)})
+    toggleSlider.Size = UDim2.new(slotW, -2, 1, -4)
+    for i, btn in ipairs(arrowOptBtns) do
+        tween(btn, {TextColor3 = i == idx and T.text or T.textMuted})
+        btn.Font = i == idx and Enum.Font.GothamBold or Enum.Font.GothamMedium
+    end
+    -- Hide/show rokakaka stat card based on whether Kars Mask is selected
+    rokaCountLabel.Parent.Visible = (opt.item ~= "Kars Mask")
+end
+
+for i, btn in ipairs(arrowOptBtns) do
+    btn.MouseButton1Click:Connect(function() selectArrow(i) end)
+end
 
 local intRow = makeRow(configBody, 1)
 intRow.Size = UDim2.new(1, 0, 0, 50)
@@ -677,6 +681,9 @@ sliderTrack.InputChanged:Connect(function(i)
     end
 end)
 
+-- ============================================================
+-- PRESETS (built-in)
+-- ============================================================
 local PRESETS = {
     { name = "Recommended", rules = {
         { type = "attribute", attribute = "Legendary" },
@@ -699,6 +706,9 @@ local PRESETS = {
     }},
 }
 
+-- ============================================================
+-- EXCLUSIONS SECTION
+-- ============================================================
 local excBody = makeSection("Exclusions", 3)
 
 local excNote = Instance.new("TextLabel")
@@ -864,7 +874,6 @@ local function makeDropdown(parent, placeholder, lOrder)
         tween(panel, {Size = UDim2.new(0, w, 0, h)}, 0.12)
     end
 
-    Content.ChildAdded:Connect(function() end)
     Content:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
         if not open then return end
         local x, posY, _ = getPosition()
@@ -1100,6 +1109,7 @@ task.spawn(function()
     standDD.populate(stands)
 end)
 
+-- Built-in preset dropdown
 local presetDD = makeDropdown(excBody, "Load a preset...", 1)
 
 do
@@ -1126,6 +1136,282 @@ presetDD.setOnSelect(function(name)
     presetDD.reset()
 end)
 
+-- ============================================================
+-- SAVE PRESET
+-- ============================================================
+
+-- Helper: simple JSON-like serialise
+local function serialisePresets(presetList)
+    local presetParts = {}
+    for _, preset in ipairs(presetList) do
+        local ruleParts = {}
+        for _, e in ipairs(preset.rules) do
+            local entry = '{"type":"' .. e.type .. '"'
+            if e.attribute then entry = entry .. ',"attribute":"' .. e.attribute .. '"' end
+            if e.stand     then entry = entry .. ',"stand":"'     .. e.stand     .. '"' end
+            entry = entry .. "}"
+            table.insert(ruleParts, entry)
+        end
+        table.insert(presetParts, '{"name":"' .. preset.name .. '","rules":[' .. table.concat(ruleParts, ",") .. "]}")
+    end
+    return "[" .. table.concat(presetParts, ",") .. "]"
+end
+
+-- Helper: load saved presets from file and merge into PRESETS table
+local function loadSavedPresets()
+    local ok, data = pcall(readfile, PRESET_FILE)
+    if not ok or not data or data == "" then return end
+    local pos = 1
+    while true do
+        local s, e, pname, rulesStr = data:find('"name":"([^"]+)","rules":(%b[])', pos)
+        if not s then break end
+        pos = e + 1
+        -- check not already in PRESETS
+        local exists = false
+        for _, p in ipairs(PRESETS) do
+            if p.name == pname then exists = true break end
+        end
+        if not exists then
+            local rules = {}
+            for obj in rulesStr:gmatch("{(.-)}") do
+                local entry = {}
+                for key, val in obj:gmatch('"(%w+)":"([^"]*)"') do
+                    entry[key] = val
+                end
+                if entry.type then table.insert(rules, entry) end
+            end
+            table.insert(PRESETS, { name = pname, rules = rules })
+        end
+    end
+end
+
+-- Slim save button (sits right under excListFrame, above presetDD)
+local savePresetBtn = Instance.new("TextButton")
+savePresetBtn.Size = UDim2.new(1, 0, 0, 24)
+savePresetBtn.BackgroundColor3 = T.elevated
+savePresetBtn.Text = "💾  Save as Preset"
+savePresetBtn.TextColor3 = T.success
+savePresetBtn.Font = Enum.Font.GothamBold
+savePresetBtn.TextSize = 11
+savePresetBtn.BorderSizePixel = 0
+savePresetBtn.LayoutOrder = 7
+corner(savePresetBtn, 6)
+stroke(savePresetBtn, T.success)
+savePresetBtn.Parent = excBody
+hoverButton(savePresetBtn, T.elevated, Color3.fromRGB(28, 42, 32))
+
+-- Toast notification
+local Toast = Instance.new("Frame")
+Toast.Size = UDim2.new(0, WIN_W - 28, 0, 30)
+Toast.BackgroundColor3 = T.elevated
+Toast.BorderSizePixel = 0
+Toast.ZIndex = 200
+Toast.Visible = false
+corner(Toast, 8)
+stroke(Toast, T.border)
+Toast.Parent = ScreenGui
+
+local ToastLabel = Instance.new("TextLabel")
+ToastLabel.Size = UDim2.new(1, -16, 1, 0)
+ToastLabel.Position = UDim2.new(0, 8, 0, 0)
+ToastLabel.BackgroundTransparency = 1
+ToastLabel.Text = ""
+ToastLabel.TextColor3 = T.text
+ToastLabel.Font = Enum.Font.GothamMedium
+ToastLabel.TextSize = 12
+ToastLabel.TextXAlignment = Enum.TextXAlignment.Left
+ToastLabel.ZIndex = 201
+ToastLabel.Parent = Toast
+
+local function anchorToast()
+    Toast.Position = UDim2.new(
+        Window.Position.X.Scale, Window.Position.X.Offset,
+        Window.Position.Y.Scale, Window.Position.Y.Offset + WIN_H + 6
+    )
+end
+
+local toastThread = nil
+local function showToast(msg, color)
+    ToastLabel.Text = msg
+    ToastLabel.TextColor3 = color or T.text
+    Toast.Visible = true
+    anchorToast()
+    if toastThread then pcall(task.cancel, toastThread) end
+    toastThread = task.delay(2.5, function() Toast.Visible = false end)
+end
+
+Window:GetPropertyChangedSignal("Position"):Connect(function()
+    if Toast.Visible then anchorToast() end
+end)
+
+-- Name-input modal (appears inside the window overlay)
+local NameModal = Instance.new("Frame")
+NameModal.Size = UDim2.new(1, 0, 1, 0)
+NameModal.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+NameModal.BackgroundTransparency = 0.45
+NameModal.BorderSizePixel = 0
+NameModal.ZIndex = 300
+NameModal.Visible = false
+NameModal.Parent = ScreenGui
+
+-- keep modal covering the window
+local function anchorModal()
+    NameModal.Position = Window.AbsolutePosition and UDim2.new(
+        0, Window.AbsolutePosition.X,
+        0, Window.AbsolutePosition.Y
+    ) or UDim2.new(0.5, -WIN_W/2, 0.5, -WIN_H/2)
+    NameModal.Size = UDim2.new(0, WIN_W, 0, WIN_H)
+end
+anchorModal()
+Window:GetPropertyChangedSignal("Position"):Connect(anchorModal)
+Window:GetPropertyChangedSignal("Size"):Connect(anchorModal)
+
+local ModalCard = Instance.new("Frame")
+ModalCard.Size = UDim2.new(0, WIN_W - 56, 0, 110)
+ModalCard.AnchorPoint = Vector2.new(0.5, 0.5)
+ModalCard.Position = UDim2.new(0.5, 0, 0.5, 0)
+ModalCard.BackgroundColor3 = T.surface
+ModalCard.BorderSizePixel = 0
+ModalCard.ZIndex = 301
+corner(ModalCard, 12)
+stroke(ModalCard, T.border)
+ModalCard.Parent = NameModal
+
+local ModalTitle = Instance.new("TextLabel")
+ModalTitle.Size = UDim2.new(1, -24, 0, 20)
+ModalTitle.Position = UDim2.new(0, 12, 0, 12)
+ModalTitle.BackgroundTransparency = 1
+ModalTitle.Text = "Name your preset"
+ModalTitle.TextColor3 = T.text
+ModalTitle.Font = Enum.Font.GothamBold
+ModalTitle.TextSize = 13
+ModalTitle.TextXAlignment = Enum.TextXAlignment.Left
+ModalTitle.ZIndex = 302
+ModalTitle.Parent = ModalCard
+
+local NameBox = Instance.new("TextBox")
+NameBox.Size = UDim2.new(1, -24, 0, 28)
+NameBox.Position = UDim2.new(0, 12, 0, 38)
+NameBox.BackgroundColor3 = T.elevated
+NameBox.BorderSizePixel = 0
+NameBox.PlaceholderText = "e.g. My PvP Rules"
+NameBox.PlaceholderColor3 = T.textDim
+NameBox.Text = ""
+NameBox.TextColor3 = T.text
+NameBox.Font = Enum.Font.Gotham
+NameBox.TextSize = 12
+NameBox.ClearTextOnFocus = false
+NameBox.ZIndex = 302
+corner(NameBox, 6)
+stroke(NameBox, T.border)
+padding(NameBox, 0, 8)
+NameBox.Parent = ModalCard
+
+local ModalBtnRow = Instance.new("Frame")
+ModalBtnRow.Size = UDim2.new(1, -24, 0, 26)
+ModalBtnRow.Position = UDim2.new(0, 12, 0, 74)
+ModalBtnRow.BackgroundTransparency = 1
+ModalBtnRow.ZIndex = 302
+ModalBtnRow.Parent = ModalCard
+
+local ModalBtnList = Instance.new("UIListLayout")
+ModalBtnList.FillDirection = Enum.FillDirection.Horizontal
+ModalBtnList.Padding = UDim.new(0, 8)
+ModalBtnList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+ModalBtnList.VerticalAlignment = Enum.VerticalAlignment.Center
+ModalBtnList.SortOrder = Enum.SortOrder.LayoutOrder
+ModalBtnList.Parent = ModalBtnRow
+
+local CancelBtn = Instance.new("TextButton")
+CancelBtn.Size = UDim2.new(0, 68, 1, 0)
+CancelBtn.BackgroundColor3 = T.elevated
+CancelBtn.Text = "Cancel"
+CancelBtn.TextColor3 = T.textMuted
+CancelBtn.Font = Enum.Font.GothamMedium
+CancelBtn.TextSize = 11
+CancelBtn.BorderSizePixel = 0
+CancelBtn.LayoutOrder = 1
+CancelBtn.ZIndex = 303
+corner(CancelBtn, 6)
+stroke(CancelBtn, T.border)
+CancelBtn.Parent = ModalBtnRow
+hoverButton(CancelBtn, T.elevated, T.border)
+
+local ConfirmBtn = Instance.new("TextButton")
+ConfirmBtn.Size = UDim2.new(0, 68, 1, 0)
+ConfirmBtn.BackgroundColor3 = T.accent
+ConfirmBtn.Text = "Save"
+ConfirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ConfirmBtn.Font = Enum.Font.GothamBold
+ConfirmBtn.TextSize = 11
+ConfirmBtn.BorderSizePixel = 0
+ConfirmBtn.LayoutOrder = 2
+ConfirmBtn.ZIndex = 303
+corner(ConfirmBtn, 6)
+ConfirmBtn.Parent = ModalBtnRow
+hoverButton(ConfirmBtn, T.accent, T.accentHov)
+
+local function refreshPresetDropdown()
+    local names = {}
+    for _, p in ipairs(PRESETS) do table.insert(names, p.name) end
+    presetDD.populate(names)
+end
+
+local function closeModal()
+    NameModal.Visible = false
+    NameBox.Text = ""
+end
+
+CancelBtn.MouseButton1Click:Connect(closeModal)
+
+ConfirmBtn.MouseButton1Click:Connect(function()
+    local name = NameBox.Text:match("^%s*(.-)%s*$")  -- trim whitespace
+    if name == "" then
+        showToast("✗  Please enter a name.", T.danger)
+        return
+    end
+    -- Check for duplicate name
+    for _, p in ipairs(PRESETS) do
+        if p.name == name then
+            showToast("✗  A preset named \"" .. name .. "\" already exists.", T.danger)
+            return
+        end
+    end
+    -- Deep-copy current exclusions into the new preset
+    local rules = {}
+    for _, e in ipairs(State.exclusions) do
+        local copy = {}
+        for k, v in pairs(e) do copy[k] = v end
+        table.insert(rules, copy)
+    end
+    local newPreset = { name = name, rules = rules }
+    table.insert(PRESETS, newPreset)
+    refreshPresetDropdown()
+    -- Persist all presets to file
+    pcall(writefile, PRESET_FILE, serialisePresets(PRESETS))
+    closeModal()
+    showToast("✓  Saved preset \"" .. name .. "\"", T.success)
+end)
+
+savePresetBtn.MouseButton1Click:Connect(function()
+    if #State.exclusions == 0 then
+        showToast("✗  No exclusions to save.", T.danger)
+        return
+    end
+    anchorModal()
+    NameModal.Visible = true
+    NameBox:CaptureFocus()
+end)
+
+-- On startup, load any previously saved presets from file and merge them in
+task.spawn(function()
+    loadSavedPresets()
+    refreshPresetDropdown()
+end)
+
+-- ============================================================
+-- CONTROLS SECTION
+-- ============================================================
 local ctrlBody = makeSection("Controls", 5)
 ctrlBody.Parent.LayoutOrder = 5
 
@@ -1158,7 +1444,12 @@ hoverButton(stopBtn, T.elevated, T.border)
 
 local function updateUI()
     arrowCountLabel.Text = tostring(getItemCount(State.arrowType))
-    rokaCountLabel.Text  = tostring(getItemCount("Rokakaka"))
+    -- Only show rokakaka count when it's relevant
+    if State.arrowType ~= "Kars Mask" then
+        rokaCountLabel.Text = tostring(getItemCount("Rokakaka"))
+    else
+        rokaCountLabel.Text = "N/A"
+    end
     spinCountLabel.Text  = tostring(State.spinCount)
     standVal.Text = getCurrentStand()
     attrVal.Text  = getCurrentAttribute()
@@ -1185,8 +1476,8 @@ end
 local function showNotification(message)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title   = "Auto Spin",
-            Text    = message,
+            Title    = "Auto Spin",
+            Text     = message,
             Duration = 5,
         })
     end)
@@ -1217,34 +1508,45 @@ local function startSpin()
     State.spinCount = 0
     State.status = "Running"
     updateUI()
+
     spinThread = task.spawn(function()
         while State.running do
+            -- Pre-spin exclusion check
             local stop, reason = shouldStop()
             if stop then
                 stopSpin(reason, true)
                 break
             end
+
             local arrows = getItemCount(State.arrowType)
             if arrows <= 0 then
-                stopSpin("Out of arrows", false)
+                stopSpin("Out of " .. State.arrowType .. "s", false)
                 break
             end
+
+            -- Fire the arrow / mask
             fireItem(State.arrowType)
             State.status = "Running — " .. State.spinCount .. " spins"
             updateUI()
             task.wait(State.interval)
+
+            -- Post-fire exclusion check
             stop, reason = shouldStop()
             if stop then
                 stopSpin(reason, true)
                 break
             end
-            local rokas = getItemCount("Rokakaka")
-            if rokas <= 0 then
-                stopSpin("Out of Rokakakas", false)
-                break
+
+            -- Kars Mask doesn't need a Rokakaka to reset — skip that step entirely
+            if State.arrowType ~= "Kars Mask" then
+                local rokas = getItemCount("Rokakaka")
+                if rokas <= 0 then
+                    stopSpin("Out of Rokakakas", false)
+                    break
+                end
+                fireItem("Rokakaka")
+                task.wait(State.interval)
             end
-            fireItem("Rokakaka")
-            task.wait(State.interval)
         end
     end)
 end
@@ -1261,6 +1563,9 @@ stopBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- ============================================================
+-- MINIMIZE / TOGGLE
+-- ============================================================
 local minimized = false
 local fullHeight = WIN_H
 MinBtn.MouseButton1Click:Connect(function()
@@ -1314,7 +1619,11 @@ RunService.Heartbeat:Connect(function()
     if not ScreenGui.Parent then return end
     onStandChanged()
     arrowCountLabel.Text = tostring(getItemCount(State.arrowType))
-    rokaCountLabel.Text  = tostring(getItemCount("Rokakaka"))
+    if State.arrowType ~= "Kars Mask" then
+        rokaCountLabel.Text = tostring(getItemCount("Rokakaka"))
+    else
+        rokaCountLabel.Text = "N/A"
+    end
     standVal.Text = getCurrentStand()
     attrVal.Text  = getCurrentAttribute()
     spinCountLabel.Text = tostring(State.spinCount)
