@@ -7,9 +7,7 @@ local Remotes = Library:WaitForChild("Remotes")
 local Send = Remotes:WaitForChild("Send")
 
 -- ============================================================
--- HOOKS (single namecall override for both fixes)
--- 1. Block server-opened BulkPurchase GUI via Connect intercept
--- 2. Block duplicate LoadBoosts InvokeServer to prevent kick
+-- HOOK: Block duplicate LoadBoosts InvokeServer to prevent kick
 -- ============================================================
 local SharedModules = Modules:WaitForChild("Shared")
 local LevelHandlerScript = SharedModules:FindFirstChild("LevelHandler")
@@ -26,18 +24,6 @@ setreadonly(mt, false)
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
 
-    -- Block server GUI: wrap OnClientEvent callbacks to swallow BulkPurchase
-    if method == "Connect" and self == Send.OnClientEvent then
-        local args = {...}
-        local originalCallback = args[1]
-        args[1] = newcclosure(function(action, ...)
-            if action == "BulkPurchase" then return end
-            return originalCallback(action, ...)
-        end)
-        return oldNamecall(self, table.unpack(args))
-    end
-
-    -- Block duplicate LoadBoosts: cache first result, return it on repeat calls
     if method == "InvokeServer" and fetchInvoke and self == fetchInvoke then
         local action = (...)
         if action == "LoadBoosts" then
@@ -71,7 +57,6 @@ end
 table.sort(MerchantKeys)
 
 -- Get deduplicated bulk-purchasable items for a merchant
--- Skips string entries like "Bulk Purchase", only reads table options
 local function GetBulkItems(merchantKey)
     local m = MerchantData.Merchants[merchantKey]
     if not m or not m.AvailableOptions then return {} end
@@ -87,13 +72,35 @@ local function GetBulkItems(merchantKey)
 end
 
 -- ============================================================
+-- BULK PROMPT SUPPRESSOR
+-- Watches PlayerGui for the BulkPrompt the server spawns and
+-- disables it for the duration of our purchase, then re-enables
+-- it afterward so normal merchant usage still works fine.
+-- ============================================================
+local BuyerRunning = false
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+PlayerGui.ChildAdded:Connect(function(child)
+    if child.Name == "BulkPrompt" and BuyerRunning then
+        child.Enabled = false
+        task.spawn(function()
+            repeat task.wait(0.1) until not BuyerRunning
+            -- Only re-enable if it's still there (it may have self-destructed)
+            if child and child.Parent then
+                child.Enabled = true
+            end
+        end)
+    end
+end)
+
+-- ============================================================
 -- GUI
 -- ============================================================
 local Player = Players.LocalPlayer
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BulkBuyer"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = Player.PlayerGui
+ScreenGui.Parent = PlayerGui
 
 local Frame = Instance.new("Frame")
 Frame.Size = UDim2.new(0, 260, 0, 230)
@@ -168,7 +175,6 @@ local function MakeTextBox(pos, size, placeholder, defaultText, parent)
     return b
 end
 
--- Builds a label + < label > picker row, returns (prevBtn, label, nextBtn)
 local function MakePicker(labelText, labelY, rowY, parent)
     MakeLabel(labelText, UDim2.new(0, 12, 0, labelY), UDim2.new(1, -24, 0, 16), parent)
 
@@ -242,7 +248,7 @@ local function UpdateMerchantLabel()
     local key = MerchantKeys[MerchantIndex]
     local m = MerchantData.Merchants[key]
     MerchantLabel.Text = (m and m.ShopName) or key
-    RefreshItems() -- repopulate item list whenever merchant changes
+    RefreshItems()
 end
 
 PrevMerchBtn.MouseButton1Click:Connect(function()
@@ -326,7 +332,6 @@ local function BuyFromMerchant(MerchantKey, SeekedItem, Amount)
         return
     end
 
-    -- Find the index of the "Bulk Purchase" string option
     local Found = { Is = false, Index = nil }
     for i, v in Merchant.AvailableOptions do
         if v == "Bulk Purchase" then
@@ -343,10 +348,14 @@ local function BuyFromMerchant(MerchantKey, SeekedItem, Amount)
 
     BuyBtn.Active = false
     BuyBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 110)
+    BuyerRunning = true
+
+    -- Also suppress any BulkPrompt already sitting in PlayerGui right now
+    local existing = PlayerGui:FindFirstChild("BulkPrompt")
+    if existing then existing.Enabled = false end
 
     local Done = false
 
-    -- Keep-alive loop: holds the merchant menu open server-side
     task.spawn(function()
         while not Done do
             Send:FireServer("Merchant", MerchantKey, Found.Index)
@@ -366,6 +375,7 @@ local function BuyFromMerchant(MerchantKey, SeekedItem, Amount)
         end
 
         Done = true
+        BuyerRunning = false
         StatusLabel.Text = ("Done! %d request(s) fired."):format(Request)
         BuyBtn.Active = true
         BuyBtn.BackgroundColor3 = Color3.fromRGB(70, 80, 190)
