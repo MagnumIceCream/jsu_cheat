@@ -70,6 +70,22 @@ for k in MerchantData.Merchants do
 end
 table.sort(MerchantKeys)
 
+-- Get deduplicated bulk-purchasable items for a merchant
+-- Skips string entries like "Bulk Purchase", only reads table options
+local function GetBulkItems(merchantKey)
+    local m = MerchantData.Merchants[merchantKey]
+    if not m or not m.AvailableOptions then return {} end
+    local seen = {}
+    local items = {}
+    for _, opt in m.AvailableOptions do
+        if typeof(opt) == "table" and opt.Item and not seen[opt.Item] then
+            seen[opt.Item] = true
+            table.insert(items, opt.Item)
+        end
+    end
+    return items
+end
+
 -- ============================================================
 -- GUI
 -- ============================================================
@@ -80,7 +96,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = Player.PlayerGui
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 260, 0, 230) -- taller to fit extra padding
+Frame.Size = UDim2.new(0, 260, 0, 230)
 Frame.Position = UDim2.new(0.5, -130, 0.5, -115)
 Frame.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
 Frame.BorderSizePixel = 0
@@ -152,76 +168,106 @@ local function MakeTextBox(pos, size, placeholder, defaultText, parent)
     return b
 end
 
+-- Builds a label + < label > picker row, returns (prevBtn, label, nextBtn)
+local function MakePicker(labelText, labelY, rowY, parent)
+    MakeLabel(labelText, UDim2.new(0, 12, 0, labelY), UDim2.new(1, -24, 0, 16), parent)
+
+    local prev = Instance.new("TextButton")
+    prev.Size = UDim2.new(0, 28, 0, 28)
+    prev.Position = UDim2.new(0, 12, 0, rowY)
+    prev.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+    prev.BorderSizePixel = 0
+    prev.TextColor3 = Color3.fromRGB(180, 180, 220)
+    prev.Font = Enum.Font.GothamBold
+    prev.TextSize = 14
+    prev.Text = "<"
+    prev.Parent = parent
+    Instance.new("UICorner", prev).CornerRadius = UDim.new(0, 6)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -88, 0, 28)
+    lbl.Position = UDim2.new(0, 46, 0, rowY)
+    lbl.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+    lbl.BorderSizePixel = 0
+    lbl.TextColor3 = Color3.fromRGB(210, 210, 255)
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 12
+    lbl.Text = ""
+    lbl.Parent = parent
+    Instance.new("UICorner", lbl).CornerRadius = UDim.new(0, 6)
+
+    local nxt = Instance.new("TextButton")
+    nxt.Size = UDim2.new(0, 28, 0, 28)
+    nxt.Position = UDim2.new(1, -40, 0, rowY)
+    nxt.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+    nxt.BorderSizePixel = 0
+    nxt.TextColor3 = Color3.fromRGB(180, 180, 220)
+    nxt.Font = Enum.Font.GothamBold
+    nxt.TextSize = 14
+    nxt.Text = ">"
+    nxt.Parent = parent
+    Instance.new("UICorner", nxt).CornerRadius = UDim.new(0, 6)
+
+    return prev, lbl, nxt
+end
+
 -- ============================================================
 -- MERCHANT PICKER
 -- ============================================================
-MakeLabel("MERCHANT", UDim2.new(0, 12, 0, 10), UDim2.new(1, -24, 0, 16), Frame)
-
 local MerchantIndex = 1
+local PrevMerchBtn, MerchantLabel, NextMerchBtn = MakePicker("MERCHANT", 10, 28, Frame)
 
-local PrevBtn = Instance.new("TextButton")
-PrevBtn.Size = UDim2.new(0, 28, 0, 28)
-PrevBtn.Position = UDim2.new(0, 12, 0, 28)
-PrevBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
-PrevBtn.BorderSizePixel = 0
-PrevBtn.TextColor3 = Color3.fromRGB(180, 180, 220)
-PrevBtn.Font = Enum.Font.GothamBold
-PrevBtn.TextSize = 14
-PrevBtn.Text = "<"
-PrevBtn.Parent = Frame
-Instance.new("UICorner", PrevBtn).CornerRadius = UDim.new(0, 6)
+-- ============================================================
+-- ITEM PICKER (auto-populated from selected merchant)
+-- ============================================================
+local ItemIndex = 1
+local CurrentItems = {}
+local PrevItemBtn, ItemLabel, NextItemBtn = MakePicker("ITEM", 66, 84, Frame)
 
-local MerchantLabel = Instance.new("TextLabel")
-MerchantLabel.Size = UDim2.new(1, -88, 0, 28)
-MerchantLabel.Position = UDim2.new(0, 46, 0, 28)
-MerchantLabel.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
-MerchantLabel.BorderSizePixel = 0
-MerchantLabel.TextColor3 = Color3.fromRGB(210, 210, 255)
-MerchantLabel.Font = Enum.Font.GothamMedium
-MerchantLabel.TextSize = 12
-MerchantLabel.Text = ""
-MerchantLabel.Parent = Frame
-Instance.new("UICorner", MerchantLabel).CornerRadius = UDim.new(0, 6)
+local function UpdateItemLabel()
+    if #CurrentItems == 0 then
+        ItemLabel.Text = "No items"
+    else
+        ItemLabel.Text = CurrentItems[ItemIndex]
+    end
+end
 
-local NextBtn = Instance.new("TextButton")
-NextBtn.Size = UDim2.new(0, 28, 0, 28)
-NextBtn.Position = UDim2.new(1, -40, 0, 28)
-NextBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
-NextBtn.BorderSizePixel = 0
-NextBtn.TextColor3 = Color3.fromRGB(180, 180, 220)
-NextBtn.Font = Enum.Font.GothamBold
-NextBtn.TextSize = 14
-NextBtn.Text = ">"
-NextBtn.Parent = Frame
-Instance.new("UICorner", NextBtn).CornerRadius = UDim.new(0, 6)
+local function RefreshItems()
+    CurrentItems = GetBulkItems(MerchantKeys[MerchantIndex])
+    ItemIndex = 1
+    UpdateItemLabel()
+end
 
 local function UpdateMerchantLabel()
     local key = MerchantKeys[MerchantIndex]
     local m = MerchantData.Merchants[key]
     MerchantLabel.Text = (m and m.ShopName) or key
+    RefreshItems() -- repopulate item list whenever merchant changes
 end
 
-PrevBtn.MouseButton1Click:Connect(function()
+PrevMerchBtn.MouseButton1Click:Connect(function()
     MerchantIndex = ((MerchantIndex - 2) % #MerchantKeys) + 1
     UpdateMerchantLabel()
 end)
 
-NextBtn.MouseButton1Click:Connect(function()
+NextMerchBtn.MouseButton1Click:Connect(function()
     MerchantIndex = (MerchantIndex % #MerchantKeys) + 1
     UpdateMerchantLabel()
 end)
 
-UpdateMerchantLabel()
+PrevItemBtn.MouseButton1Click:Connect(function()
+    if #CurrentItems == 0 then return end
+    ItemIndex = ((ItemIndex - 2) % #CurrentItems) + 1
+    UpdateItemLabel()
+end)
 
--- ============================================================
--- ITEM
--- ============================================================
-MakeLabel("ITEM", UDim2.new(0, 12, 0, 66), UDim2.new(1, -24, 0, 16), Frame)
-local ItemBox = MakeTextBox(
-    UDim2.new(0, 12, 0, 84),
-    UDim2.new(1, -24, 0, 28),
-    "Item name...", "Unusual Arrow", Frame
-)
+NextItemBtn.MouseButton1Click:Connect(function()
+    if #CurrentItems == 0 then return end
+    ItemIndex = (ItemIndex % #CurrentItems) + 1
+    UpdateItemLabel()
+end)
+
+UpdateMerchantLabel()
 
 -- ============================================================
 -- AMOUNT
@@ -236,7 +282,7 @@ AmountBox.Font = Enum.Font.GothamBold
 AmountBox.TextSize = 16
 
 -- ============================================================
--- STATUS  (moved down to accommodate extra padding gap)
+-- STATUS
 -- ============================================================
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -24, 0, 14)
@@ -250,11 +296,11 @@ StatusLabel.Text = ""
 StatusLabel.Parent = Frame
 
 -- ============================================================
--- BUY BUTTON  (extra 24px gap below amount box: 138+28+24 = 190)
+-- BUY BUTTON
 -- ============================================================
 local BuyBtn = Instance.new("TextButton")
 BuyBtn.Size = UDim2.new(1, -24, 0, 28)
-BuyBtn.Position = UDim2.new(0, 12, 0, 190) -- was 164, now 190 for more padding
+BuyBtn.Position = UDim2.new(0, 12, 0, 190)
 BuyBtn.BackgroundColor3 = Color3.fromRGB(70, 80, 190)
 BuyBtn.BorderSizePixel = 0
 BuyBtn.TextColor3 = Color3.fromRGB(210, 220, 255)
@@ -280,6 +326,7 @@ local function BuyFromMerchant(MerchantKey, SeekedItem, Amount)
         return
     end
 
+    -- Find the index of the "Bulk Purchase" string option
     local Found = { Is = false, Index = nil }
     for i, v in Merchant.AvailableOptions do
         if v == "Bulk Purchase" then
@@ -327,15 +374,19 @@ end
 
 BuyBtn.MouseButton1Click:Connect(function()
     local MerchantKey = MerchantKeys[MerchantIndex]
-    local Item = ItemBox.Text
+    local Item = CurrentItems[ItemIndex]
     local Amount = tonumber(AmountBox.Text)
 
     if not MerchantKey then
         StatusLabel.Text = "Invalid merchant."
         return
     end
-    if not Amount or Amount <= 0 or Item == "" then
-        StatusLabel.Text = "Enter a valid item and amount."
+    if #CurrentItems == 0 then
+        StatusLabel.Text = "This merchant has no bulk items."
+        return
+    end
+    if not Amount or Amount <= 0 then
+        StatusLabel.Text = "Enter a valid amount."
         return
     end
 
