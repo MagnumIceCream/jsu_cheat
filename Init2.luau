@@ -7,57 +7,53 @@ local Remotes = Library:WaitForChild("Remotes")
 local Send = Remotes:WaitForChild("Send")
 
 -- ============================================================
--- HOOK 1: Block server-opened BulkPurchase GUI
--- Must be done before anything connects to OnClientEvent
+-- HOOKS (single namecall override for both fixes)
+-- 1. Block server-opened BulkPurchase GUI via Connect intercept
+-- 2. Block duplicate LoadBoosts InvokeServer to prevent kick
 -- ============================================================
+local SharedModules = Modules:WaitForChild("Shared")
+local LevelHandlerScript = SharedModules:FindFirstChild("LevelHandler")
+local LevelHandlerAssets = LevelHandlerScript and LevelHandlerScript:FindFirstChild("Assets")
+local fetchInvoke = LevelHandlerAssets and LevelHandlerAssets:WaitForChild("_fetch", 10)
+
+local alreadyInvoked = false
+local cachedBoostsTable, cachedBoostValues
+
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 setreadonly(mt, false)
 
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
+
+    -- Block server GUI: wrap OnClientEvent callbacks to swallow BulkPurchase
     if method == "Connect" and self == Send.OnClientEvent then
         local args = {...}
         local originalCallback = args[1]
         args[1] = newcclosure(function(action, ...)
-            if action == "BulkPurchase" then return end -- swallow server GUI open
+            if action == "BulkPurchase" then return end
             return originalCallback(action, ...)
         end)
         return oldNamecall(self, table.unpack(args))
     end
+
+    -- Block duplicate LoadBoosts: cache first result, return it on repeat calls
+    if method == "InvokeServer" and fetchInvoke and self == fetchInvoke then
+        local action = (...)
+        if action == "LoadBoosts" then
+            if alreadyInvoked then
+                return cachedBoostsTable, cachedBoostValues
+            end
+            alreadyInvoked = true
+            cachedBoostsTable, cachedBoostValues = oldNamecall(self, ...)
+            return cachedBoostsTable, cachedBoostValues
+        end
+    end
+
     return oldNamecall(self, ...)
 end)
 
 setreadonly(mt, true)
-
--- ============================================================
--- HOOK 2: Block duplicate LoadBoosts invoke (prevents kick)
--- Must be done before requiring MerchantData
--- ============================================================
-local SharedModules = Modules:WaitForChild("Shared")
-local LevelHandlerScript = SharedModules:FindFirstChild("LevelHandler")
-local LevelHandlerAssets = LevelHandlerScript and LevelHandlerScript:FindFirstChild("Assets")
-
-if LevelHandlerAssets then
-    local fetchInvoke = LevelHandlerAssets:WaitForChild("_fetch", 10)
-    if fetchInvoke then
-        local originalInvoke = fetchInvoke.InvokeServer
-        local alreadyInvoked = false
-        local cachedBoostsTable, cachedBoostValues
-
-        fetchInvoke.InvokeServer = newcclosure(function(self, action, ...)
-            if action == "LoadBoosts" then
-                if alreadyInvoked then
-                    return cachedBoostsTable, cachedBoostValues
-                end
-                alreadyInvoked = true
-                cachedBoostsTable, cachedBoostValues = originalInvoke(self, action, ...)
-                return cachedBoostsTable, cachedBoostValues
-            end
-            return originalInvoke(self, action, ...)
-        end)
-    end
-end
 
 -- ============================================================
 -- MAIN SCRIPT
